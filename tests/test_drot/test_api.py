@@ -119,15 +119,25 @@ class DrotTestCase(unittest.TestCase):
         self.assertEquals(self.BIG_DICT, json.loads(testee.to_json()))
 
     def test_from_json(self):
-        @drot.parser(self.SheldonBeatsDoctor, 'member')
-        def parse_member(value):
-            return self.Member(**value)
+        try:
+            @drot.parser(self.SheldonBeatsDoctor, 'member')
+            def parse_member(value):
+                return self.Member(**value)
 
-        testee = self.SheldonBeatsDoctor.from_json(json.dumps(self.BIG_DICT))
+            d = json.dumps(self.BIG_DICT)
+            testee = self.SheldonBeatsDoctor.from_json(d)
 
-        self.assertEquals([{'1': '2'}, {}], testee.member.field1)
-        self.assertEquals([1, 2, 3], testee.array)
-        self.assertEquals('bazzinga!', testee.b)
+            self.assertEquals([{'1': '2'}, {}], testee.member.field1)
+            self.assertEquals([1, 2, 3], testee.array)
+            self.assertEquals('bazzinga!', testee.b)
+        finally:
+            del getattr(self.SheldonBeatsDoctor, '__drot_parsers')['member']
+
+    def test_excluded(self):
+        testee = self.SheldonBeatsDoctor.to_object(**self.BIG_DICT)
+
+        self.assertFalse('member' in testee.to_dict(excluded=['member']))
+        self.assertTrue('member' in testee.to_dict())
 
 
 @drot.parser(DrotTestCase.SheldonBeatsDoctor, 'a')

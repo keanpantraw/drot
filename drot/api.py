@@ -47,11 +47,11 @@ def parser(cls, field_name):
     return wrapper
 
 
-def _to_dict(self):
+def _to_dict(self, excluded=None):
     """Transforms object to it's dictionary representation
     with respect to formatters"""
     result = {}
-    for key in self._mapping_attributes:
+    for key in self.__drot_mapping_attributes - set(excluded or []):
         if hasattr(self, key):
             item = getattr(self, key)
             transform = self.__drot_formatters.get(key, _transform_item)
@@ -59,14 +59,14 @@ def _to_dict(self):
     return result
 
 
-def _to_json(self):
+def _to_json(self, excluded=None):
     """Transforms object to it's json representation"""
-    return json.dumps(self.to_dict())
+    return json.dumps(self.to_dict(excluded=excluded))
 
 
 @classmethod
 def _from_json(cls, json_string=None, *args):
-    return cls.to_object(**json.loads(json_string))
+    return cls.to_object(*args, **json.loads(json_string))
 
 
 @classmethod
@@ -83,7 +83,7 @@ def _decorate_init(initializer):
     """Detect class attributes for serialization"""
     @functools.wraps(initializer)
     def wrapper(self, *args, **kwargs):
-        self._mapping_attributes = kwargs.keys()
+        self.__drot_mapping_attributes = set(kwargs.keys())
         initializer(self, *args, **kwargs)
     return wrapper
 

@@ -8,26 +8,22 @@ FORMATTERS = '__drot_formatters'
 PARSERS = '__drot_parsers'
 TYPE = '__drot_type'
 ATTRIBUTE = '__drot_attribute'
+MARK = '__drotted'
 
 
 def definition(clazz):
     """Decorate class, making it suitable for dict <-> object conversion"""
-    @classmethod
-    def to_object(cls, *args, **kwargs):
-        for name, parser in getattr(cls, PARSERS, {}):
-            if name in kwargs:
-                kwargs[name] = parser(kwargs[name])
-        return clazz(*args, **kwargs)
-
     clazz.to_dict = _to_dict
-    clazz.to_object = to_object
+    clazz.to_object = _to_object
     _collect_schema_info(clazz)
 
     clazz.__init__ = _decorate_init(clazz.__init__)
+    setattr(clazz, MARK, True)
+    return clazz
 
 
 def formatter(field_name):
-    """Formatter that will be used to format field_name
+    """Marks formatter that will be used to format field_name
     during transformation to dictionary.
     Returned value will be used literally in output dictionary.
     """
@@ -35,10 +31,36 @@ def formatter(field_name):
 
 
 def parser(field_name):
-    """Parser that will be used to parse dictionary field
+    """Marks parser that will be used to parse dictionary field
     with name field_name before creation of corresponding object
+
+    parsers must be class methods
     """
     return _patch_method(field_name, PARSER)
+
+
+def _to_dict(self):
+    """Transforms object to it's dictionary representation
+    with respect to formatters"""
+    result = {}
+    for key in self._mapping_attributes:
+        if hasattr(self, key):
+            item = getattr(self, key)
+            if key in self.__drot_formatters:
+                result[key] = self.__drot_formatters[key](self, item)
+            else:
+                result[key] = _transform_item(item)
+    return result
+
+
+@classmethod
+def _to_object(cls, *args, **kwargs):
+    """Creates object from it's dictionary representation
+    with respect to parsers"""
+    for name, parser in getattr(cls, PARSERS, {}).iteritems():
+        if name in kwargs:
+            kwargs[name] = parser(kwargs[name])
+    return cls(*args, **kwargs)
 
 
 def _decorate_init(initializer):
@@ -60,9 +82,10 @@ def _collect_schema_info(cls):
 
 def _collect_methods(cls, storage_name, method_type):
     if not hasattr(cls, storage_name):
-        collected = dict((getattr(x, ATTRIBUTE), x)
-                         for x in inspect.getmembers(cls, inspect.ismethod)
-                         if _drot_type(x) == method_type)
+        collected = {}
+        for name, method in inspect.getmembers(cls, inspect.ismethod):
+            if _drot_type(method) == method_type:
+                collected[getattr(method, ATTRIBUTE)] = method
         setattr(cls, storage_name, collected)
 
 
@@ -85,27 +108,16 @@ def _transform_item(item):
         return [_transform_item(member) for member in item]
 
     if isinstance(item, dict):
-        return dict((key, _transform_item(item[key])) for key in item)
+        return dict((key, _transform_item(item[key]))
+                    for key in item)
 
     if any([isinstance(item, cls) for cls in
            (int, float, basestring, bool, None.__class__)]):
         return item
 
-    transform_method = getattr(item, 'to_dict', None)
-    if transform_method and callable(transform_method):
+    if getattr(item, MARK, False):
         return item.to_dict()
 
     raise NotImplementedError("Object to dictionary conversion "
                               "is not implemented for "
                               "item %s with type %s" % (item, item.__class__))
-
-
-def _to_dict(self):
-    """Transforms object to it's dictionary representation"""
-    result = {}
-    for key in self._mapping_attributes:
-        if hasattr(self, key):
-            item = getattr(self, key)
-            transform = self.__drot_formatters.get(key, _transform_item)
-            result[key] = transform(item)
-    return result

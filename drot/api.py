@@ -1,4 +1,5 @@
 import functools
+import json
 
 
 def definition(clazz):
@@ -8,6 +9,8 @@ def definition(clazz):
     clazz.__drotted = True
     clazz.to_dict = _to_dict
     clazz.to_object = _to_object
+    clazz.to_json = _to_json
+    clazz.from_json = _from_json
 
     clazz.__init__ = _decorate_init(clazz.__init__)
     return clazz
@@ -31,9 +34,7 @@ def formatter(cls, field_name):
 
 def parser(cls, field_name):
     """Marks parser that will be used to parse dictionary field
-    with name field_name before creation of corresponding object
-
-    parsers must be class methods
+    with name field_name before creation of corresponding object.
     """
     def wrapper(func):
         if not getattr(cls, '__drotted', False):
@@ -56,6 +57,16 @@ def _to_dict(self):
             transform = self.__drot_formatters.get(key, _transform_item)
             result[key] = transform(item)
     return result
+
+
+def _to_json(self):
+    """Transforms object to it's json representation"""
+    return json.dumps(self.to_dict())
+
+
+@classmethod
+def _from_json(cls, json_string=None, *args):
+    return cls.to_object(**json.loads(json_string))
 
 
 @classmethod

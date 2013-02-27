@@ -1,3 +1,4 @@
+import json
 import unittest
 
 import drot
@@ -14,6 +15,19 @@ class DrotTestCase(unittest.TestCase):
             self.member = member
             self.a = a or "TARDIS"
             self.b = b or "DOCTOR"
+
+    @drot.definition
+    class Member(object):
+        def __init__(self, field1=None, field2=None):
+            self.field1 = field1
+            self.field2 = field2
+
+    BIG_DICT = {"member": {"field2": None,
+                           "field1": [{"1": "2"}, {}]},
+                "array": [1, 2, 3],
+                "b": "bazzinga!",
+                "dictionary": {"a": 100500},
+                }
 
     def test_no_values_are_set(self):
         testee = self.SheldonBeatsDoctor()
@@ -93,6 +107,27 @@ class DrotTestCase(unittest.TestCase):
                                "to check class definition!")
         except AssertionError:
             pass
+
+    def test_to_json(self):
+
+        member = self.Member(field1=[{'1': '2'}, {}], field2=None)
+        testee = self.SheldonBeatsDoctor(array=[1, 2, 3],
+                                         member=member,
+                                         dictionary={'a': 100500},
+                                         b='grizzly')
+
+        self.assertEquals(self.BIG_DICT, json.loads(testee.to_json()))
+
+    def test_from_json(self):
+        @drot.parser(self.SheldonBeatsDoctor, 'member')
+        def parse_member(value):
+            return self.Member(**value)
+
+        testee = self.SheldonBeatsDoctor.from_json(json.dumps(self.BIG_DICT))
+
+        self.assertEquals([{'1': '2'}, {}], testee.member.field1)
+        self.assertEquals([1, 2, 3], testee.array)
+        self.assertEquals('bazzinga!', testee.b)
 
 
 @drot.parser(DrotTestCase.SheldonBeatsDoctor, 'a')

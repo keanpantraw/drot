@@ -15,15 +15,6 @@ class DrotTestCase(unittest.TestCase):
             self.a = a or "TARDIS"
             self.b = b or "DOCTOR"
 
-        @classmethod
-        @drot.parser('a')
-        def __parse_a(cls, value):
-            return "sheldon"
-
-        @drot.formatter('b')
-        def __format_b(self, value):
-            return "bazzinga!"
-
     def test_no_values_are_set(self):
         testee = self.SheldonBeatsDoctor()
         self.assertEquals({}, testee.to_dict())
@@ -62,3 +53,53 @@ class DrotTestCase(unittest.TestCase):
 
         testee = self.SheldonBeatsDoctor(member=Wrong())
         self.assertRaises(NotImplementedError, testee.to_dict)
+
+    def test_wrong_parser(self):
+        try:
+            @drot.parser(self.SheldonBeatsDoctor, 'a')
+            def foo():
+                pass
+            raise RuntimeError("parser decorator forget "
+                               "to check function signature!")
+        except AssertionError:
+            pass
+
+    def test_wrong_formatter(self):
+        try:
+            @drot.formatter(self.SheldonBeatsDoctor, 'a')
+            def foo():
+                pass
+            raise RuntimeError("formatter decorator forget "
+                               "to check function signature!")
+        except AssertionError:
+            pass
+
+    def test_wrong_class_for_parser(self):
+        try:
+            @drot.parser(int, 'foo')
+            def foo(a):
+                pass
+            raise RuntimeError("parser decorator forget "
+                               "to check class definition!")
+        except AssertionError:
+            pass
+
+    def test_wrong_class_for_formatter(self):
+        try:
+            @drot.formatter(int, 'foo')
+            def foo(a):
+                pass
+            raise RuntimeError("parser decorator forget "
+                               "to check class definition!")
+        except AssertionError:
+            pass
+
+
+@drot.parser(DrotTestCase.SheldonBeatsDoctor, 'a')
+def parse_a(value):
+    return "sheldon"
+
+
+@drot.formatter(DrotTestCase.SheldonBeatsDoctor, 'b')
+def format_b(value):
+    return "bazzinga!"

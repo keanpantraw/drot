@@ -177,6 +177,9 @@ class DrotTestCase(unittest.TestCase):
         self.SheldonBeatsDoctor(dictionary={'a': s, 'b': s}).to_dict()
         member = self.Member(field1=l, field2=l)
         self.SheldonBeatsDoctor(member=member)
+        self.SheldonBeatsDoctor(dictionary={'a': {'a': member,
+                                                  'b': {'b': member,
+                                                        'c': member}}})
 
 
 @drot.parser(DrotTestCase.SheldonBeatsDoctor, 'a')

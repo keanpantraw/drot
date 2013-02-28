@@ -139,6 +139,45 @@ class DrotTestCase(unittest.TestCase):
         self.assertFalse('member' in testee.to_dict(excluded=['member']))
         self.assertTrue('member' in testee.to_dict())
 
+    def test_array_cycle(self):
+        L = [1, 2, 3]
+        L.append(L)
+        testee = self.SheldonBeatsDoctor(array=L)
+
+        self.assertRaises(ValueError, testee.to_dict)
+
+    def test_dictionary_cycle(self):
+        D = {'a': 'b'}
+        D['c'] = D
+        testee = self.SheldonBeatsDoctor(dictionary=D)
+
+        self.assertRaises(ValueError, testee.to_dict)
+
+    def test_object_cycle(self):
+        member = self.Member(field1=1)
+        member.field1 = member
+        testee = self.SheldonBeatsDoctor(member=member, array=2)
+
+        self.assertRaises(ValueError, testee.to_dict)
+
+    def test_complicated_cycle(self):
+        member = self.Member(field1={})
+        member.field1['bra'] = [1, 2, 3]
+        member.field1['bra'].append(member)
+        testee = self.SheldonBeatsDoctor(member=member, array=[])
+
+        self.assertRaises(ValueError, testee.to_dict)
+
+    def test_false_positive_cycle(self):
+        s = "foo"
+        l = []
+        member = self.Member(field1=1)
+        self.SheldonBeatsDoctor(array=[l, l, l]).to_dict()
+        self.SheldonBeatsDoctor(member=member, array=member).to_dict()
+        self.SheldonBeatsDoctor(dictionary={'a': s, 'b': s}).to_dict()
+        member = self.Member(field1=l, field2=l)
+        self.SheldonBeatsDoctor(member=member)
+
 
 @drot.parser(DrotTestCase.SheldonBeatsDoctor, 'a')
 def parse_a(value):

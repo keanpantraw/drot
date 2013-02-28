@@ -22,6 +22,18 @@ class DrotTestCase(unittest.TestCase):
             self.field1 = field1
             self.field2 = field2
 
+    @drot.whitelist([])
+    class Empty(object):
+        def __init__(self, a=None, b=None):
+            self.a = a
+            self.b = b
+
+    @drot.whitelist(['a'])
+    class Partial(object):
+        def __init__(self, a=None, b=None):
+            self.a = a
+            self.b = b
+
     BIG_DICT = {"member": {"field2": None,
                            "field1": [{"1": "2"}, {}]},
                 "array": [1, 2, 3],
@@ -180,6 +192,26 @@ class DrotTestCase(unittest.TestCase):
         self.SheldonBeatsDoctor(dictionary={'a': {'a': member,
                                                   'b': {'b': member,
                                                         'c': member}}})
+
+    def test_whitelist_empty_to_dict(self):
+        testee = self.Empty(a='a', b='b')
+        self.assertEquals({}, testee.to_dict())
+
+    def test_whitelist_to_dict(self):
+        testee = self.Partial(a='a', b='b')
+        self.assertEquals({'a': 'a'}, testee.to_dict())
+
+    def test_whitelist_empty_to_object(self):
+        testee = self.Empty.to_object(a='a', b='b', c='c')
+        self.assertEquals(None, testee.a)
+        self.assertEquals(None, testee.b)
+        self.assertRaises(AttributeError, getattr, testee, 'c')
+
+    def test_whitelist_to_object(self):
+        testee = self.Partial.to_object(a='a', b='b', c='c')
+        self.assertEquals('a', testee.a)
+        self.assertEquals(None, testee.b)
+        self.assertRaises(AttributeError, getattr, testee, 'c')
 
 
 @drot.parser(DrotTestCase.SheldonBeatsDoctor, 'a')

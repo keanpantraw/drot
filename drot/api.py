@@ -3,19 +3,32 @@ import functools
 import json
 
 
-def definition(clazz):
-    """Decorate class, making it suitable for dict <-> object conversion"""
-    clazz.__drot_formatters = {}
-    clazz.__drot_parsers = {}
-    clazz.__drotted = True
+def whitelist(whitelist):
+    """Decorate class, making it suitable for dict <-> object conversion.
+    Only listed attributes are allowed in produced dictionaries and objects.
+    """
+    def _default_definition(clazz):
+        """Decorate class, making it suitable for dict <-> object conversion
+        """
+        clazz.__drot_whitelist = whitelist
+        clazz.__drot_formatters = {}
+        clazz.__drot_parsers = {}
+        clazz.__drotted = True
 
-    clazz.to_dict = _to_dict
-    clazz.to_object = _to_object
-    clazz.to_json = _to_json
-    clazz.from_json = _from_json
+        clazz.to_dict = _to_dict
+        clazz.to_object = _to_object
+        clazz.to_json = _to_json
+        clazz.from_json = _from_json
 
-    clazz.__init__ = _decorate_init(clazz.__init__)
-    return clazz
+        clazz.__init__ = _decorate_init(clazz.__init__)
+        return clazz
+
+    if not whitelist is None:
+        whitelist = set(whitelist)
+    return _default_definition
+
+
+definition = whitelist(None)
 
 
 def formatter(cls, field_name):
@@ -90,6 +103,9 @@ def _to_object(cls, *args, **kwargs):
     for name, parser in cls.__drot_parsers.iteritems():
         if name in kwargs:
             kwargs[name] = parser(kwargs[name])
+    if not cls.__drot_whitelist is None:
+        kwargs = dict((key, value) for key, value in kwargs.iteritems()
+                      if key in cls.__drot_whitelist)
     return cls(*args, **kwargs)
 
 
@@ -97,7 +113,10 @@ def _decorate_init(initializer):
     """Detect class attributes for serialization"""
     @functools.wraps(initializer)
     def wrapper(self, *args, **kwargs):
-        self.__drot_mapping_attributes = set(kwargs.keys())
+        attributes = set(kwargs.keys())
+        if not self.__drot_whitelist is None:
+            attributes &= self.__drot_whitelist
+        self.__drot_mapping_attributes = attributes
         initializer(self, *args, **kwargs)
     return wrapper
 

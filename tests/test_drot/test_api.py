@@ -34,6 +34,28 @@ class DrotTestCase(unittest.TestCase):
             self.a = a
             self.b = b
 
+    @drot.classdef
+    class TypicalModel(object):
+        a = 'a'
+        b = 'b'
+        _c = 'xxx'
+        __d = 'member'
+
+        def foo(self, k):
+            pass
+
+        @classmethod
+        def bar(self, tank):
+            pass
+
+        @property
+        def prop(self):
+            return "property"
+
+        @prop.setter
+        def set_prop(self, value):
+            self.value = value
+
     BIG_DICT = {"member": {"field2": None,
                            "field1": [{"1": "2"}, {}]},
                 "array": [1, 2, 3],
@@ -212,6 +234,11 @@ class DrotTestCase(unittest.TestCase):
         self.assertEquals('a', testee.a)
         self.assertEquals(None, testee.b)
         self.assertRaises(AttributeError, getattr, testee, 'c')
+
+    def test_classdef_to_dict(self):
+        testee = self.TypicalModel()
+        self.assertEquals({'a': 'a', 'b': 'b', 'prop': 'property'},
+                          testee.to_dict())
 
 
 @drot.parser(DrotTestCase.SheldonBeatsDoctor, 'a')

@@ -1,5 +1,6 @@
 import contextlib
 import functools
+import inspect
 import json
 
 
@@ -10,16 +11,7 @@ def whitelist(whitelist):
     def _default_definition(clazz):
         """Decorate class, making it suitable for dict <-> object conversion
         """
-        clazz.__drot_whitelist = whitelist
-        clazz.__drot_formatters = {}
-        clazz.__drot_parsers = {}
-        clazz.__drotted = True
-
-        clazz.to_dict = _to_dict
-        clazz.to_object = _to_object
-        clazz.to_json = _to_json
-        clazz.from_json = _from_json
-
+        _class_init(clazz, whitelist=whitelist)
         clazz.__init__ = _decorate_init(clazz.__init__)
         return clazz
 
@@ -29,6 +21,20 @@ def whitelist(whitelist):
 
 
 definition = whitelist(None)
+
+
+def classdef(clazz):
+    """Decorate class, making it suitable for dict <-> object conversion.
+    All public class attributes are allowed
+    in produced dictionaries and objects.
+    """
+    _class_init(clazz)
+    attributes = set([k for k, v in vars(clazz).iteritems()
+                      if _is_attribute(v)
+                      and not k.startswith('_')])
+    print attributes
+    clazz.__drot_mapping_attributes = attributes
+    return clazz
 
 
 def formatter(cls, field_name):
@@ -66,6 +72,29 @@ def parser(cls, field_name):
                                  "should accept one argument")
         return func
     return wrapper
+
+
+def _class_init(clazz, whitelist=None):
+    clazz.__drot_whitelist = whitelist
+    clazz.__drot_formatters = {}
+    clazz.__drot_parsers = {}
+    clazz.__drotted = True
+
+    clazz.to_dict = _to_dict
+    clazz.to_object = _to_object
+    clazz.to_json = _to_json
+    clazz.from_json = _from_json
+
+
+def _is_attribute(arg):
+    #  facepalm
+    if callable(arg) or inspect.ismethoddescriptor(arg):
+        return False
+    if isinstance(arg, property):
+        if arg.fset is None:
+            return True
+        return False
+    return True
 
 
 def _to_dict(self, excluded=None):

@@ -113,7 +113,7 @@ There are ``model`` decorator which helps you to parse nested objects ::
 
 ``to_dict`` will recursively transform models to dictionaries and will fail if there is reference cycle.
 
-There are ``excluded`` parameter for ``to_dict`` ::
+There is ``excluded`` parameter for ``to_dict`` ::
 
 
         @route('/posts')
@@ -123,3 +123,7 @@ There are ``excluded`` parameter for ``to_dict`` ::
 
 
 That's all it does.
+
+There are only one requirement for models:
+
+        1. It must be instantiable as Model()

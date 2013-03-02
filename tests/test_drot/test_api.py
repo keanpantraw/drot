@@ -9,6 +9,11 @@ class Member(object):
     field2 = None
 
 
+@drot.simple_model
+class Inherited(Member):
+    field3 = None
+
+
 def parse_a(value):
     return "bazinga!"
 
@@ -177,3 +182,12 @@ class DrotTestCase(unittest.TestCase):
             raise RuntimeError("Wrong decorator usage is working!")
         except AssertionError:
             pass
+
+    def test_support_models_inheritance(self):
+        testee = Inherited()
+        testee.field1 = 'a'
+        testee.field2 = 'b'
+        testee.field3 = 'c'
+
+        self.assertEquals({'field1': 'a', 'field2': 'b', 'field3': 'c'},
+                          testee.to_dict())

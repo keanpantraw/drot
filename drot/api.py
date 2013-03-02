@@ -11,8 +11,14 @@ def model(*whitelist, **kwargs):
                              "Write @model() or @simple_model instead")
 
     def _class_wrapper(clazz):
-        clazz.__drotted = True
-        clazz.__drot_parser_hooks = kwargs
+        if not getattr(clazz, '_drotted', False):
+            # Respect base class if it was drotted too
+            clazz._drot_parser_hooks = {}
+            clazz._drot_mapping_attributes = set([])
+            clazz._drot_property_map = {}
+
+        clazz._drotted = True
+        clazz._drot_parser_hooks.update(kwargs)
 
         clazz.to_dict = _to_dict
         clazz.to_object = _to_object
@@ -22,12 +28,12 @@ def model(*whitelist, **kwargs):
             attributes = set(k for k, v in vars(clazz).iteritems()
                              if _is_attribute(v)
                              and not k.startswith('_'))
-        clazz.__drot_mapping_attributes = attributes
+        clazz._drot_mapping_attributes.update(attributes)
 
         property_map = dict((v.fget.__name__, v.fset)
                             for k, v in vars(clazz).iteritems()
                             if _is_property_setter(v))
-        clazz.__drot_property_map = property_map
+        clazz._drot_property_map.update(property_map)
         return clazz
     return _class_wrapper
 
@@ -60,7 +66,7 @@ def _to_dict(self, excluded=None):
 
 def _to_dict_internal(self, idset, excluded=None):
     result = {}
-    for key in self.__drot_mapping_attributes - set(excluded or []):
+    for key in self._drot_mapping_attributes - set(excluded or []):
         if hasattr(self, key):
             item = getattr(self, key)
             result[key] = _transform_item(item, idset)
@@ -72,16 +78,16 @@ def _to_object(cls, dictionary):
     """Creates object from it's dictionary representation
     with respect to specified parsers"""
     dictionary = dict((k, v) for k, v in dictionary.iteritems()
-                      if k in cls.__drot_mapping_attributes)
+                      if k in cls._drot_mapping_attributes)
 
     item = cls()
     for key, value in dictionary.iteritems():
 
-        if key in cls.__drot_parser_hooks:
-            value = cls.__drot_parser_hooks[key](value)
+        if key in cls._drot_parser_hooks:
+            value = cls._drot_parser_hooks[key](value)
 
-        if key in cls.__drot_property_map:
-            cls.__drot_property_map[key](item, value)
+        if key in cls._drot_property_map:
+            cls._drot_property_map[key](item, value)
         else:
             setattr(item, key, value)
     return item
@@ -105,7 +111,7 @@ def _transform_item(item, idset):
 
     _check_reference_cycle(item, idset)
     with _memorized(item, idset):
-        if getattr(item, '__drotted', False):
+        if getattr(item, '_drotted', False):
             return _to_dict_internal(item, idset=idset)
 
         if isinstance(item, list):

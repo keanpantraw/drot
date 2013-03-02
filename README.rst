@@ -62,6 +62,7 @@ In many and many other cases this code will be there. But do you really need to 
 What ``drot`` does is very simple: it adds two methods to model (``to_dict`` and ``to_object``) based on a class definition.
 
 By default, every model public attribute (that doesn't start with _) will be in output dictionary and will be accepted from input dictionary.
+This will also work with ``@property`` decorator.
 
 Rewrite our previous example using ``drot`` ::
 

@@ -39,6 +39,14 @@ class TypicalModel(object):
         self.value = value
 
 
+@drot.model('a', 'b',
+            a=parse_a)
+class Partial(object):
+    a = None
+    b = None
+    c = 'surprise!'
+
+
 class DrotTestCase(unittest.TestCase):
     BIG_DICT = {"member": {"field2": None,
                            "field1": [{"1": "2"}, {}]},
@@ -146,3 +154,26 @@ class DrotTestCase(unittest.TestCase):
                                    'b': {'b': member,
                                          'c': member}}}
         testee.to_dict()
+
+    def test_whitelist_to_dict(self):
+        testee = Partial()
+        testee.a = 'a'
+        testee.b = 'b'
+        testee.c = 'c'
+
+        self.assertEquals({'a': 'a', 'b': 'b'}, testee.to_dict())
+
+    def test_whitelist_to_object(self):
+        testee = Partial.to_object({'a': 'a', 'b': 'b', 'c': 'c'})
+
+        self.assertEquals('surprise!', testee.c)
+
+    def test_wrong_decorator_usage(self):
+        try:
+            @drot.model
+            class Model(object):
+                pass
+
+            raise RuntimeError("Wrong decorator usage is working!")
+        except AssertionError:
+            pass

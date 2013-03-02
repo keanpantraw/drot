@@ -2,19 +2,26 @@ import contextlib
 import inspect
 
 
-def model(**kwargs):
+def model(*whitelist, **kwargs):
     """Decorate class, making it suitable for dict <-> object conversion.
     """
+    if len(whitelist) == 1 and isinstance(whitelist[0], type):
+        raise AssertionError("This decorator should NOT be used like that: "
+                             "@model. "
+                             "Write @model() or @simple_model instead")
+
     def _class_wrapper(clazz):
         clazz.__drotted = True
         clazz.__drot_parser_hooks = kwargs
 
         clazz.to_dict = _to_dict
         clazz.to_object = _to_object
-
-        attributes = set(k for k, v in vars(clazz).iteritems()
-                         if _is_attribute(v)
-                         and not k.startswith('_'))
+        if whitelist:
+            attributes = set(whitelist)
+        else:
+            attributes = set(k for k, v in vars(clazz).iteritems()
+                             if _is_attribute(v)
+                             and not k.startswith('_'))
         clazz.__drot_mapping_attributes = attributes
 
         property_map = dict((v.fget.__name__, v.fset)

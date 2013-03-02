@@ -123,6 +123,17 @@ There is ``excluded`` parameter for ``to_dict`` ::
             return jsonify({"values": [post.to_dict(excluded=['evil_value']) for post in posts]})
 
 
+If you're desperate about what goes in and out from your models, you can specify whitelist of attributes that are allowed::
+
+
+        @drot.model('author', 'text', author=Author.to_object)
+        class BlogPost(Document):
+            author = None
+            text = None
+            evil_attribute = None #  Will never be in dictionary or passed from given dictionary
+            ...
+
+
 That's all it does.
 
 There are only one requirement for models:

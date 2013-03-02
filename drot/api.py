@@ -1,153 +1,83 @@
 import contextlib
-import functools
 import inspect
-import json
 
 
-def whitelist(whitelist):
+def model(**kwargs):
     """Decorate class, making it suitable for dict <-> object conversion.
-    Only listed attributes are allowed in produced dictionaries and objects.
     """
-    def _default_definition(clazz):
-        """Decorate class, making it suitable for dict <-> object conversion
-        """
-        _class_init(clazz, whitelist=whitelist)
-        clazz.__init__ = _decorate_init(clazz.__init__)
+    def _class_wrapper(clazz):
+        clazz.__drotted = True
+        clazz.__drot_parser_hooks = kwargs
+
+        clazz.to_dict = _to_dict
+        clazz.to_object = _to_object
+
+        attributes = set(k for k, v in vars(clazz).iteritems()
+                         if _is_attribute(v)
+                         and not k.startswith('_'))
+        clazz.__drot_mapping_attributes = attributes
+
+        property_map = dict((v.fget.__name__, v.fset)
+                            for k, v in vars(clazz).iteritems()
+                            if _is_property_setter(v))
+        clazz.__drot_property_map = property_map
         return clazz
-
-    if not whitelist is None:
-        whitelist = set(whitelist)
-    return _default_definition
+    return _class_wrapper
 
 
-definition = whitelist(None)
+simple_model = model()
 
 
-def classdef(clazz):
-    """Decorate class, making it suitable for dict <-> object conversion.
-    All public class attributes are allowed
-    in produced dictionaries and objects.
-    """
-    _class_init(clazz)
-    attributes = set([k for k, v in vars(clazz).iteritems()
-                      if _is_attribute(v)
-                      and not k.startswith('_')])
-    print attributes
-    clazz.__drot_mapping_attributes = attributes
-    return clazz
+def _is_function(arg):
+    return callable(arg) or inspect.ismethoddescriptor(arg)
 
 
-def formatter(cls, field_name):
-    """Marks formatter that will be used to format field
-    during class transformation to dictionary.
-    Returned value will be used literally in output dictionary.
-    """
-    def wrapper(func):
-        if not getattr(cls, '__drotted', False):
-            raise AssertionError("Class %s have no definition" % cls)
-        if func.func_code.co_argcount != 1:
-            raise AssertionError("Formatter function "
-                                 "should accept one argument")
-
-        def patched_func(value, idset=None):
-            item = func(value)
-            _check_reference_cycle(item, idset)
-            return item
-
-        cls.__drot_formatters[field_name] = patched_func
-        return func
-    return wrapper
+def _is_property_getter(arg):
+    return isinstance(arg, property) and arg.fset
 
 
-def parser(cls, field_name):
-    """Marks parser that will be used to parse dictionary field
-    with name field_name before creation of corresponding object.
-    """
-    def wrapper(func):
-        if not getattr(cls, '__drotted', False):
-            raise AssertionError("Class %s have no definition" % cls)
-        cls.__drot_parsers[field_name] = func
-        if func.func_code.co_argcount != 1:
-            raise AssertionError("Parser function "
-                                 "should accept one argument")
-        return func
-    return wrapper
-
-
-def _class_init(clazz, whitelist=None):
-    clazz.__drot_whitelist = whitelist
-    clazz.__drot_formatters = {}
-    clazz.__drot_parsers = {}
-    clazz.__drotted = True
-
-    clazz.to_dict = _to_dict
-    clazz.to_object = _to_object
-    clazz.to_json = _to_json
-    clazz.from_json = _from_json
+def _is_property_setter(arg):
+    return isinstance(arg, property) and arg.fset is None
 
 
 def _is_attribute(arg):
-    #  facepalm
-    if callable(arg) or inspect.ismethoddescriptor(arg):
-        return False
-    if isinstance(arg, property):
-        if arg.fset is None:
-            return True
-        return False
-    return True
+    return not (_is_function(arg) or _is_property_setter(arg))
 
 
 def _to_dict(self, excluded=None):
+    """Transforms object to it's dictionary representation"""
     idset = set([])
     with _memorized(self, idset):
         return _to_dict_internal(self, idset, excluded=excluded)
 
 
 def _to_dict_internal(self, idset, excluded=None):
-    """Transforms object to it's dictionary representation
-    with respect to formatters"""
     result = {}
     for key in self.__drot_mapping_attributes - set(excluded or []):
         if hasattr(self, key):
             item = getattr(self, key)
-            transform = self.__drot_formatters.get(key, _transform_item)
-            result[key] = transform(item, idset)
+            result[key] = _transform_item(item, idset)
     return result
 
 
-def _to_json(self, excluded=None):
-    """Transforms object to it's json representation"""
-    return json.dumps(self.to_dict(excluded=excluded))
-
-
 @classmethod
-def _from_json(cls, json_string=None, *args):
-    return cls.to_object(*args, **json.loads(json_string))
-
-
-@classmethod
-def _to_object(cls, *args, **kwargs):
+def _to_object(cls, dictionary):
     """Creates object from it's dictionary representation
-    with respect to parsers"""
-    for name, parser in cls.__drot_parsers.iteritems():
-        if name in kwargs:
-            kwargs[name] = parser(kwargs[name])
-    if not cls.__drot_whitelist is None:
-        kwargs = dict((key, value) for key, value in kwargs.iteritems()
-                      if key in cls.__drot_whitelist)
-    return cls(*args, **kwargs)
+    with respect to specified parsers"""
+    dictionary = dict((k, v) for k, v in dictionary.iteritems()
+                      if k in cls.__drot_mapping_attributes)
 
+    item = cls()
+    for key, value in dictionary.iteritems():
 
-def _decorate_init(initializer):
-    """Detect class attributes for serialization"""
-    @functools.wraps(initializer)
-    def wrapper(self, *args, **kwargs):
-        attributes = set(kwargs.keys())
-        if not self.__drot_whitelist is None:
-            attributes &= self.__drot_whitelist
-        self.__drot_mapping_attributes = attributes
-        initializer(self, *args, **kwargs)
-    return wrapper
+        if key in cls.__drot_parser_hooks:
+            value = cls.__drot_parser_hooks[key](value)
+
+        if key in cls.__drot_property_map:
+            cls.__drot_property_map[key](item, value)
+        else:
+            setattr(item, key, value)
+    return item
 
 
 def _check_reference_cycle(item, idset):
@@ -166,15 +96,9 @@ def _memorized(item, idset):
 def _transform_item(item, idset):
     """Transform item to it's dictionary representation"""
 
-    if any([isinstance(item, cls) for cls in
-            (int, float, basestring, bool, None.__class__)]):
-        # no point in reference cycles for these
-        return item
-
     _check_reference_cycle(item, idset)
     with _memorized(item, idset):
         if getattr(item, '__drotted', False):
-            # item will check itself for reference cycle
             return _to_dict_internal(item, idset=idset)
 
         if isinstance(item, list):
@@ -183,8 +107,4 @@ def _transform_item(item, idset):
         if isinstance(item, dict):
             return dict((key, _transform_item(item[key], idset))
                         for key in item)
-
-    raise NotImplementedError("Object to dictionary conversion "
-                              "is not implemented for "
-                              "item %s with type %s" % (item,
-                                                        item.__class__))
+    return item

@@ -5,8 +5,9 @@ Drot is small library that allows you to easy represent your model objects as a 
 
 Main intent was to simplify models representation as JSON in RESTful web services by removing typical models boilerplate code.
 
-Suppose we writing some ordinary RESTful web service using ``flask`` with ``mongoengine`` and have three models (examples are from mongoengine documentation)::
+Suppose we writing some ordinary RESTful web service using ``flask`` with ``mongoengine`` and have three models (examples are from mongoengine documentation):
 
+.. code-block:: python
 
         class BlogPost(Document):
                 title = StringField(required=True, max_length=200)
@@ -22,8 +23,9 @@ Suppose we writing some ordinary RESTful web service using ``flask`` with ``mong
                 url = StringField(required=True)
 
 
-Now we want to use this models in our RESTful web service::
+Now we want to use this models in our RESTful web service:
 
+.. code-block:: python
 
         @route('/posts')
         def list_posts():
@@ -36,8 +38,9 @@ Now we want to use this models in our RESTful web service::
 
 What code will be there instead of ``...``? 
 
-Well, it depends::
+Well, it depends:
 
+.. code-block:: python
 
         post = BlogPost()
         post.title = request.json['title']
@@ -45,14 +48,16 @@ Well, it depends::
         post.tags = request.json['tags']
 
 
-or ::
+or :
 
+.. code-block:: python
 
         post = BlogPost(**request.json) #  With all magic inside
 
 
-or ::
+or :
 
+.. code-block:: python
 
         post = BlogPost.from_json(request.json) # With all eggs
 
@@ -64,8 +69,9 @@ What ``drot`` does is very simple: it adds two methods to model (``to_dict`` and
 By default, every model public attribute (that doesn't start with _) will be in output dictionary and will be accepted from input dictionary.
 This will also work with ``@property`` decorator.
 
-Rewrite our previous example using ``drot``::
+Rewrite our previous example using ``drot``:
 
+.. code-block:: python
 
         import drot
 
@@ -99,8 +105,9 @@ Rewrite our previous example using ``drot``::
                 post = BlogPost.to_object(request.json)
 
 
-There are ``model`` decorator which helps you to parse nested objects::
+There are ``model`` decorator which helps you to parse nested objects:
 
+.. code-block:: python
         
         @drot.simple_model
         class Author(Document):
@@ -114,8 +121,9 @@ There are ``model`` decorator which helps you to parse nested objects::
 
 ``to_dict`` will recursively transform models to dictionaries and will fail if there is reference cycle.
 
-There is ``excluded`` parameter for ``to_dict``::
+There is ``excluded`` parameter for ``to_dict``:
 
+.. code-block:: python
 
         @route('/posts')
         def posts():
@@ -123,8 +131,9 @@ There is ``excluded`` parameter for ``to_dict``::
             return jsonify({"values": [post.to_dict(excluded=['evil_value']) for post in posts]})
 
 
-If you're desperate about what goes in and out from your models, you can specify whitelist of attributes that are allowed::
+If you're desperate about what goes in and out from your models, you can specify whitelist of attributes that are allowed:
 
+.. code-block:: python
 
         @drot.model('author', 'text', author=Author.to_object)
         class BlogPost(Document):

@@ -105,8 +105,8 @@ There are ``model`` decorator which helps you to parse nested objects ::
         class Author(Document):
             ...
 
-         
-        @drot.model(author=Author.to_object) # you will get post.author = <Author object> after calling BlogPost.to_object
+        # you will get post.author = <Author object> after calling BlogPost.to_object 
+        @drot.model(author=Author.to_object)
         class BlogPost(Document):
             author = None
             ...

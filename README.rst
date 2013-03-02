@@ -9,31 +9,31 @@ Suppose we writing some ordinary RESTful web service using ``flask`` with ``mong
 
 .. code-block:: python
 
-        class BlogPost(Document):
-                title = StringField(required=True, max_length=200)
-                posted = DateTimeField(default=datetime.datetime.now)
-                tags = ListField(StringField(max_length=50))
+    class BlogPost(Document):
+        title = StringField(required=True, max_length=200)
+        posted = DateTimeField(default=datetime.datetime.now)
+        tags = ListField(StringField(max_length=50))
 
 
-        class TextPost(BlogPost):
-                content = StringField(required=True)
+    class TextPost(BlogPost):
+        content = StringField(required=True)
 
 
-        class LinkPost(BlogPost):
-                url = StringField(required=True)
+    class LinkPost(BlogPost):
+        url = StringField(required=True)
 
 
 Now we want to use this models in our RESTful web service:
 
 .. code-block:: python
 
-        @route('/posts')
-        def list_posts():
-                ...
+    @route('/posts')
+    def list_posts():
+        ...
 
-        @route('/posts', method=['POST'])
-        def make_post():
-                ...
+    @route('/posts', method=['POST'])
+    def make_post():
+        ...
 
 
 What code will be there instead of ``...``? 
@@ -42,24 +42,24 @@ Well, it depends:
 
 .. code-block:: python
 
-        post = BlogPost()
-        post.title = request.json['title']
-        post.posted = request.json['posted']
-        post.tags = request.json['tags']
+    post = BlogPost()
+    post.title = request.json['title']
+    post.posted = request.json['posted']
+    post.tags = request.json['tags']
 
 
 or :
 
 .. code-block:: python
 
-        post = BlogPost(**request.json) #  With all magic inside
+    post = BlogPost(**request.json) #  With all magic inside
 
 
 or :
 
 .. code-block:: python
 
-        post = BlogPost.from_json(request.json) # With all eggs
+    post = BlogPost.from_json(request.json) # With all eggs
 
 
 In many and many other cases this code will be there. But do you really need to type this every time? I don't think so.
@@ -73,51 +73,51 @@ Rewrite our previous example using ``drot``:
 
 .. code-block:: python
 
-        import drot
+    import drot
 
 
-        @drot.simple_model
-        class BlogPost(Document):
-            title = StringField(required=True, max_length=200)
-            posted = DateTimeField(default=datetime.datetime.now)
-            tags = ListField(StringField(max_length=50))
-
-        
-        @drot.simple_model
-        class TextPost(BlogPost):
-            content = StringField(required=True)
+    @drot.simple_model
+    class BlogPost(Document):
+        title = StringField(required=True, max_length=200)
+        posted = DateTimeField(default=datetime.datetime.now)
+        tags = ListField(StringField(max_length=50))
 
         
-        @drot.simple_model
-        class LinkPost(BlogPost):
-            url = StringField(required=True)
+    @drot.simple_model
+    class TextPost(BlogPost):
+        content = StringField(required=True)
+
+        
+    @drot.simple_model
+    class LinkPost(BlogPost):
+        url = StringField(required=True)
 
 
-        <somewhere else ...>
+    <somewhere else ...>
 
-        @route('/posts')
-        def list_posts():
-               ...
-               return jsonify({"values": [post.to_dict() for post in posts]})
+    @route('/posts')
+    def list_posts():
+        ...
+        return jsonify({"values": [post.to_dict() for post in posts]})
 
-        @route('/posts', method=['POST'])
-        def make_post():
-                post = BlogPost.to_object(request.json)
+    @route('/posts', method=['POST'])
+    def make_post():
+        post = BlogPost.to_object(request.json)
 
 
 There are ``model`` decorator which helps you to parse nested objects:
 
 .. code-block:: python
         
-        @drot.simple_model
-        class Author(Document):
-            ...
+    @drot.simple_model
+    class Author(Document):
+        ...
 
-        # you will get post.author = <Author object> after calling BlogPost.to_object 
-        @drot.model(author=Author.to_object)
-        class BlogPost(Document):
-            author = None
-            ...
+    # you will get post.author = <Author object> after calling BlogPost.to_object 
+    @drot.model(author=Author.to_object)
+    class BlogPost(Document):
+        author = None
+        ...
 
 ``to_dict`` will recursively transform models to dictionaries and will fail if there is reference cycle.
 
@@ -125,26 +125,26 @@ There is ``excluded`` parameter for ``to_dict``:
 
 .. code-block:: python
 
-        @route('/posts')
-        def posts():
-            ...
-            return jsonify({"values": [post.to_dict(excluded=['evil_value']) for post in posts]})
+    @route('/posts')
+    def posts():
+        ...
+        return jsonify({"values": [post.to_dict(excluded=['evil_value']) for post in posts]})
 
 
 If you're desperate about what goes in and out from your models, you can specify whitelist of attributes that are allowed:
 
 .. code-block:: python
 
-        @drot.model('author', 'text', author=Author.to_object)
-        class BlogPost(Document):
-            author = None
-            text = None
-            evil_attribute = None #  Will never be in dictionary or passed from given dictionary
-            ...
+    @drot.model('author', 'text', author=Author.to_object)
+    class BlogPost(Document):
+        author = None
+        text = None
+        evil_attribute = None #  Will never be in dictionary or passed from given dictionary
+        ...
 
 
 That's all it does.
 
 There are only one requirement for models:
 
-        1. It must be instantiable as Model()
+    1. It must be instantiable as Model()

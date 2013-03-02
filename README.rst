@@ -5,7 +5,7 @@ Drot is small library that allows you to easy represent your model objects as a 
 
 Main intent was to simplify models representation as JSON in RESTful web services by removing typical models boilerplate code.
 
-Suppose we writing some ordinary RESTful web service using ``flask`` with ``mongoengine`` and have three models (examples are from mongoengine documentation) ::
+Suppose we writing some ordinary RESTful web service using ``flask`` with ``mongoengine`` and have three models (examples are from mongoengine documentation)::
 
 
         class BlogPost(Document):
@@ -22,7 +22,7 @@ Suppose we writing some ordinary RESTful web service using ``flask`` with ``mong
                 url = StringField(required=True)
 
 
-Now we want to use this models in our RESTful web service ::
+Now we want to use this models in our RESTful web service::
 
 
         @route('/posts')
@@ -36,7 +36,7 @@ Now we want to use this models in our RESTful web service ::
 
 What code will be there instead of ``...``? 
 
-Well, it depends ::
+Well, it depends::
 
 
         post = BlogPost()
@@ -64,7 +64,7 @@ What ``drot`` does is very simple: it adds two methods to model (``to_dict`` and
 By default, every model public attribute (that doesn't start with _) will be in output dictionary and will be accepted from input dictionary.
 This will also work with ``@property`` decorator.
 
-Rewrite our previous example using ``drot`` ::
+Rewrite our previous example using ``drot``::
 
 
         import drot
@@ -99,7 +99,7 @@ Rewrite our previous example using ``drot`` ::
                 post = BlogPost.to_object(request.json)
 
 
-There are ``model`` decorator which helps you to parse nested objects ::
+There are ``model`` decorator which helps you to parse nested objects::
 
         
         @drot.simple_model
@@ -114,7 +114,7 @@ There are ``model`` decorator which helps you to parse nested objects ::
 
 ``to_dict`` will recursively transform models to dictionaries and will fail if there is reference cycle.
 
-There is ``excluded`` parameter for ``to_dict`` ::
+There is ``excluded`` parameter for ``to_dict``::
 
 
         @route('/posts')

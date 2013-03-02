@@ -1,7 +1,7 @@
-drot - representing your models easy way (DROT stands for REST data transfer objects)
-=====================================================================================
+drot - representing your models easy way 
+========================================
 
-Drot is small library that allows you to easy represent your model objects as a dictionaries and vice versa.
+Drot is small library that allows you to easy represent your model objects as a dictionaries and vice versa (DROT stands for REST data transfer objects).
 
 Main intent was to simplify models representation as JSON in RESTful web services by removing typical models boilerplate code.
 
@@ -111,6 +111,7 @@ There are ``model`` decorator which helps you to parse nested objects ::
             author = None
             ...
 
+``to_dict`` will recursively transform models to dictionaries and will fail if there is reference cycle.
 
 There are ``excluded`` parameter for ``to_dict`` ::
 

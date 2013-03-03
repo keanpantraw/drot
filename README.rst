@@ -148,3 +148,11 @@ That's all it does.
 There are only one requirement for models:
 
     1. It must be instantiable as Model()
+
+
+Disclaimer
+----------
+
+Code was written under constant panda supervision.
+
+.. image:: http://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Panda_Cub_from_Wolong%2C_Sichuan%2C_China.JPG/640px-Panda_Cub_from_Wolong%2C_Sichuan%2C_China.JPG
